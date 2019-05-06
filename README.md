@@ -1,6 +1,6 @@
 # Display
 
-A tile-based display intended for roguelikes, based on the display module from [rotLove](https://github.com/paulofmandown/rotLove).
+A tile-based display intended for roguelikes, forked from the display module from [rotLove](https://github.com/paulofmandown/rotLove). Most of this was *not* written by me, I just wanted a standalone display with custom tileset support.
 
 ## Usage
 Basic usage.
