@@ -11,16 +11,14 @@ local util = require 'util'
 -- @tparam[opt] table dfg Default foreground color as a table defined as {r,g,b,a}
 -- @tparam[opt] table dbg Default background color
 -- @tparam[opt=false] boolean fullOrFlags In Love 0.8.0: Use fullscreen In Love 0.9.0: a table defined for love.graphics.setMode
--- @tparam[opt=cp437.png] love image CP437 font image 
--- @tparam[opt=12] int imgcw Width of the image's characters 
--- @tparam[opt=12] int imgch Height of the image's characters
+-- @tparam[opt={path = 'cp437.png', perRow = 32, charHeight = 16, charWidth = 9}] table Information for custom tilesets
 -- @tparam[opt=false] boolean noWindow Whether to setMode or not
 -- @return nil
-function Display:new(w, h, scale, dfg, dbg, fullOrFlags, image, imageInfo, window)
+function Display:new(w, h, scale, dfg, dbg, fullOrFlags, imageInfo, window)
    local t = {}
    setmetatable(t, self)
    self.__index = self
-   local imageInfo = imageInfo or {height = 32, width = 32, charWidth = 9, charHeight = 16}
+   local imageInfo = imageInfo or {path = 'cp437.png', perRow = 32, charWidth = 9, charHeight = 16}
    t.__name = 'Display'
    t.widthInChars = w and w or 80
    t.heightInChars = h and h or 24
@@ -51,11 +49,11 @@ function Display:new(w, h, scale, dfg, dbg, fullOrFlags, image, imageInfo, windo
 
    t.canvas = t.graphics.newCanvas(t.charWidth*t.widthInChars, t.charHeight*t.heightInChars)
 
-   t.glyphSprite = image or t.graphics.newImage('cp437.png')
+   t.glyphSprite = t.graphics.newImage(imageInfo.path)
 
    for i = 0, 255 do
-      local sx = (i % imageInfo.height) * t.imageCharWidth
-      local sy = math.floor(i / imageInfo.width) * t.imageCharHeight
+      local sx = (i % imageInfo.perRow) * t.imageCharWidth
+      local sy = math.floor(i / imageInfo.perRow) * t.imageCharHeight
       t.glyphs[i] = t.graphics.newQuad(sx, sy, t.imageCharWidth, t.imageCharHeight, t.glyphSprite:getWidth(), t.glyphSprite:getHeight())
    end
 
