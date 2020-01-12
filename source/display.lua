@@ -14,19 +14,16 @@ local util = require 'util'
 -- @tparam[opt={path = 'cp437.png', perRow = 32, charHeight = 16, charWidth = 9}] table Information for custom tilesets
 -- @tparam[opt=false] boolean noWindow Whether to setMode or not
 -- @return nil
-function Display:new(w, h, scale, dfg, dbg, fullOrFlags, imageInfo, window)
+function Display:new(w, h, scale, dfg, dbg, fullOrFlags, tilesetInfo, window)
    local t = {}
    setmetatable(t, self)
    self.__index = self
-   local imageInfo = imageInfo or {path = 'cp437.png', perRow = 32, charWidth = 9, charHeight = 16}
+   local tilesetInfo = tilesetInfo or {path = 'wanderlust_16x16.png', perRow = 16, charWidth = 16, charHeight = 16}
+   t.tilesetChanged = false
    t.__name = 'Display'
    t.widthInChars = w and w or 80
    t.heightInChars = h and h or 24
    t.scale = scale or 1
-   t.imageCharWidth = imageInfo.charWidth
-   t.imageCharHeight = imageInfo.charHeight
-   t.charWidth = t.imageCharWidth * t.scale
-   t.charHeight = t.imageCharHeight * t.scale
    t.glyphs = {}
    t.chars = {{}}
    t.backgroundColors = {{}}
@@ -34,11 +31,14 @@ function Display:new(w, h, scale, dfg, dbg, fullOrFlags, imageInfo, window)
    t.oldChars = {{}}
    t.oldBackgroundColors = {{}}
    t.oldForegroundColors = {{}}
-   t.subDisplays = {}
    t.graphics = love.graphics
+
+   t:setTileset(tilesetInfo)
+
    if window then
       love.window.setMode(t.charWidth*t.widthInChars, t.charHeight*t.heightInChars, {vsync=false})
    end
+
    t.drawQ = t.graphics.draw
 
    t.defaultForegroundColor = dfg or { 0.9215686274509803, 0.9215686274509803, 0.9215686274509803 }
@@ -49,14 +49,6 @@ function Display:new(w, h, scale, dfg, dbg, fullOrFlags, imageInfo, window)
 
    t.canvas = t.graphics.newCanvas(t.charWidth*t.widthInChars, t.charHeight*t.heightInChars)
 
-   t.glyphSprite = t.graphics.newImage(imageInfo.path)
-
-   for i = 0, 255 do
-      local sx = (i % imageInfo.perRow) * t.imageCharWidth
-      local sy = math.floor(i / imageInfo.perRow) * t.imageCharHeight
-      t.glyphs[i] = t.graphics.newQuad(sx, sy, t.imageCharWidth, t.imageCharHeight, t.glyphSprite:getWidth(), t.glyphSprite:getHeight())
-   end
-
    for i = 1, t.widthInChars do
       t.chars[i]               = {}
       t.backgroundColors[i]    = {}
@@ -66,19 +58,20 @@ function Display:new(w, h, scale, dfg, dbg, fullOrFlags, imageInfo, window)
       t.oldForegroundColors[i] = {}
       for j = 1,t.heightInChars do
          t.chars[i][j]               = 32
-         t.backgroundColors[i][j]    = self.defaultBackgroundColor
-         t.foregroundColors[i][j]    = self.defaultForegroundColor
+         t.backgroundColors[i][j]    = t.defaultBackgroundColor
+         t.foregroundColors[i][j]    = t.defaultForegroundColor
          t.oldChars[i][j]            = nil
          t.oldBackgroundColors[i][j] = nil
          t.oldForegroundColors[i][j] = nil
       end
    end
+
    return t
 end
 
 --- Draw.
 -- The main draw function. This should be called from love.draw() to display any written characters to screen
-function Display:draw(noDraw, subDisplay)
+function Display:draw(noDraw)
 	local startX = 1
 	local endX = self.widthInChars
 	local startY = 1
@@ -94,12 +87,13 @@ function Display:draw(noDraw, subDisplay)
          local py = (y-1)*self.charHeight
          if self.oldChars[x][y]            ~= c  or
             self.oldBackgroundColors[x][y] ~= bg or
-            self.oldForegroundColors[x][y] ~= fg then
+            self.oldForegroundColors[x][y] ~= fg or 
+			self.tilesetChanged                  then
 
             self:_setColor(bg)
             self.graphics.rectangle('fill', px, py, self.charWidth, self.charHeight)
             if c ~= 32 and c ~= 255 then
-               local qd=self.glyphs[c]
+               local qd = self.glyphs[c]
                self:_setColor(fg)
                self.drawQ(self.glyphSprite, qd, px, py, nil, self.scale)
             end
@@ -110,10 +104,29 @@ function Display:draw(noDraw, subDisplay)
          end
       end
    end
+   self.tilesetChanged = false
    self.graphics.setCanvas()
    self.graphics.setColor(1, 1, 1, 1)
    if noDraw then return end
    self.graphics.draw(self.canvas)
+end
+
+--- Change the tileset.
+-- Accepts the same table format as the one passed to the constructor.
+function Display:setTileset(tilesetInfo)
+   self.imageCharWidth = tilesetInfo.charWidth
+   self.imageCharHeight = tilesetInfo.charHeight
+   self.charWidth = self.imageCharWidth * self.scale
+   self.charHeight = self.imageCharHeight * self.scale
+   self.glyphSprite = self.graphics.newImage(tilesetInfo.path)
+
+   for i = 0, 255 do
+      local sx = (i % tilesetInfo.perRow) * self.imageCharWidth
+      local sy = math.floor(i / tilesetInfo.perRow) * self.imageCharHeight
+      self.glyphs[i] = self.graphics.newQuad(sx, sy, self.imageCharWidth, self.imageCharHeight, self.glyphSprite:getWidth(), self.glyphSprite:getHeight())
+   end
+
+   self.tilesetChanged = true
 end
 
 --- Contains point.
